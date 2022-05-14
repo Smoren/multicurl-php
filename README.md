@@ -1,6 +1,6 @@
 # multicurl
 
-Multicurl wrapper
+Multi curl wrapper for making parallel HTTP requests
 
 ### How to install to your project
 ```

@@ -1,6 +1,6 @@
 {
   "name": "smoren/multicurl",
-  "description": "Multi curl wrapper",
+  "description": "Multi curl wrapper for making parallel HTTP requests",
   "keywords": ["curl", "multicurl", "parallel", "request", "http"],
   "license": "MIT",
   "authors": [
