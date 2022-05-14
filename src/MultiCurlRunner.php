@@ -222,7 +222,7 @@ class MultiCurlRunner
 
             $line = strtok($respItem, "\r\n");
             $statusCodeLine = trim($line);
-            if(preg_match('|HTTP/\d\.\d\s+(\d+)\s+.*|', $statusCodeLine,$matches)) {
+            if(preg_match('|HTTP/\d\.\d\s+(\d+)|', $statusCodeLine,$matches)) {
                 $arHeaders = [];
                 $statusCode = (int)$matches[1] ?? null;
 
