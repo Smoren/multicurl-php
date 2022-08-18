@@ -16,8 +16,8 @@ composer require smoren/multicurl
 ### Unit testing
 ```
 composer install
-./vendor/bin/codecept build
-./vendor/bin/codecept run unit tests/unit
+composer test-init
+composer test
 ```
 
 ### Usage
