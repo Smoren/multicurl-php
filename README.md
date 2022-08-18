@@ -2,6 +2,12 @@
 
 Multi curl wrapper for making parallel HTTP requests
 
+![Packagist PHP Version Support](https://img.shields.io/packagist/php-v/smoren/multicurl)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Smoren/multicurl-php/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Smoren/multicurl-php/?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/Smoren/multicurl-php/badge.svg?branch=master)](https://coveralls.io/github/Smoren/multicurl-php?branch=master)
+![Build and test](https://github.com/Smoren/multicurl-php/actions/workflows/test_master.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ### How to install to your project
 ```
 composer require smoren/multicurl

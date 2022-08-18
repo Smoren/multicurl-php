@@ -1,13 +1,12 @@
 <?php
 
-
 namespace Smoren\MultiCurl;
-
 
 use RuntimeException;
 
 /**
  * MultiCurl wrapper for making parallel HTTP requests
+ * @author <ofigate@gmail.com> Smoren
  */
 class MultiCurl
 {
@@ -16,28 +15,29 @@ class MultiCurl
      */
     protected $maxConnections;
     /**
-     * @var array common CURL options for every request
+     * @var array<int, mixed> common CURL options for every request
      */
     protected $commonOptions = [];
     /**
-     * @var array common headers for every request
+     * @var array<string, string> common headers for every request
      */
     protected $commonHeaders = [];
     /**
-     * @var array map of CURL options including headers by custom request ID
+     * @var array<string, array<int, mixed>> map of CURL options including headers by custom request ID
      */
     protected $requestsConfigMap = [];
 
     /**
      * MultiCurl constructor
      * @param int $maxConnections max parallel connections count
-     * @param array $commonOptions common CURL options for every request
-     * @param array $commonHeaders common headers for every request
+     * @param array<int, mixed> $commonOptions common CURL options for every request
+     * @param array<string, string> $commonHeaders common headers for every request
      */
     public function __construct(
-        int $maxConnections = 100, array $commonOptions = [], array $commonHeaders = []
-    )
-    {
+        int $maxConnections = 100,
+        array $commonOptions = [],
+        array $commonHeaders = []
+    ) {
         $this->maxConnections = $maxConnections;
         $this->commonOptions = [
             CURLOPT_URL => '',
@@ -53,31 +53,37 @@ class MultiCurl
     }
 
     /**
+     * Executes all the requests and returns their results map
      * @param bool $dataOnly if true: return only response body data, exclude status code and headers
      * @param bool $okOnly if true: return only responses with (200 <= status code < 300)
-     * @return array responses mapped by custom request IDs
+     * @return array<string, mixed> responses mapped by custom request IDs
      * @throws RuntimeException
      */
     public function makeRequests(bool $dataOnly = false, bool $okOnly = false): array
     {
         $runner = new MultiCurlRunner($this->requestsConfigMap, $this->maxConnections);
         $runner->run();
+        $this->requestsConfigMap = [];
 
         return $dataOnly ? $runner->getResultData($okOnly) : $runner->getResult($okOnly);
     }
 
     /**
+     * Adds new request to execute
      * @param string $requestId custom request ID
      * @param string $url URL for request
      * @param mixed $body body data (will be json encoded if array)
-     * @param array $options CURL request options
-     * @param array $headers request headers
+     * @param array<int, mixed> $options CURL request options
+     * @param array<string, string> $headers request headers
      * @return self
      */
     public function addRequest(
-        string $requestId, string $url, $body = null, array $options = [], array $headers = []
-    ): self
-    {
+        string $requestId,
+        string $url,
+        $body = null,
+        array $options = [],
+        array $headers = []
+    ): self {
         foreach($this->commonOptions as $key => $value) {
             if(!array_key_exists($key, $options)) {
                 $options[$key] = $value;
@@ -95,7 +101,7 @@ class MultiCurl
         }
 
         if($body !== null) {
-            $options[CURLOPT_POSTFIELDS] = (string)$body;
+            $options[CURLOPT_POSTFIELDS] = strval($body);
         }
 
         $options[CURLOPT_HTTPHEADER] = $this->formatHeaders($headers);
@@ -108,8 +114,8 @@ class MultiCurl
 
     /**
      * Formats headers from associative array
-     * @param array $headers request headers associative array
-     * @return array headers array to pass to curl_setopt_array
+     * @param array<string, string> $headers request headers associative array
+     * @return array<string> headers array to pass to curl_setopt_array
      */
     protected function formatHeaders(array $headers): array
     {

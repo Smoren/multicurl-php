@@ -1,13 +1,12 @@
 <?php
 
-
 namespace Smoren\MultiCurl;
-
 
 use RuntimeException;
 
 /**
  * Class to run MultiCurl requests and get responses
+ * @author <ofigate@gmail.com> Smoren
  */
 class MultiCurlRunner
 {
@@ -16,11 +15,11 @@ class MultiCurlRunner
      */
     protected $mh;
     /**
-     * @var array map [workerId => customRequestId]
+     * @var array<int, string> map [workerId => customRequestId]
      */
     protected $workersMap;
     /**
-     * @var resource[] unemployed workers stack
+     * @var array<resource> unemployed workers stack
      */
     protected $unemployedWorkers;
     /**
@@ -28,17 +27,18 @@ class MultiCurlRunner
      */
     protected $maxConnections;
     /**
-     * @var array map of CURL options including headers by custom request ID
+     * @var array<string, array<int, mixed>> map of CURL options including headers by custom request ID
      */
     protected $requestsConfigMap;
     /**
-     * @var array responses mapped by custom request ID
+     * @var array<string, array<string, mixed>> responses mapped by custom request ID
      */
     protected $result;
 
     /**
      * MultiCurlRunner constructor
-     * @param array $requestsConfigMap map of CURL options including headers by custom request ID
+     * @param array<string, array<int, mixed>> $requestsConfigMap map of CURL options
+     * including headers by custom request ID
      * @param int $maxConnections max parallel connections count
      */
     public function __construct(array $requestsConfigMap, int $maxConnections)
@@ -46,7 +46,13 @@ class MultiCurlRunner
         $this->requestsConfigMap = $requestsConfigMap;
         $this->maxConnections = min($maxConnections, count($requestsConfigMap));
 
-        $this->mh = curl_multi_init();
+        $mh = curl_multi_init();
+
+        if(!$mh) {
+            throw new RuntimeException("failed creating curl multi handle");
+        }
+
+        $this->mh = $mh;
         $this->workersMap = [];
         $this->unemployedWorkers = [];
         $this->result = [];
@@ -60,6 +66,7 @@ class MultiCurlRunner
     public function run(): self
     {
         for($i=0; $i<$this->maxConnections; ++$i) {
+            /** @var resource|false $unemployedWorker */
             $unemployedWorker = curl_init();
             if(!$unemployedWorker) {
                 throw new RuntimeException("failed creating unemployed worker #{$i}");
@@ -106,7 +113,7 @@ class MultiCurlRunner
      * Returns response:
      * [customRequestId => [code => statusCode, headers => [key => value, ...], body => responseBody], ...]
      * @param bool $okOnly if true: return only responses with (200 <= status code < 300)
-     * @return array responses mapped by custom request IDs
+     * @return array<string, array<string, mixed>> responses mapped by custom request IDs
      */
     public function getResult(bool $okOnly = false): array
     {
@@ -125,7 +132,7 @@ class MultiCurlRunner
      * Returns response bodies:
      * [customRequestId => responseBody, ...]
      * @param bool $okOnly if true: return only responses with (200 <= status code < 300)
-     * @return array responses mapped by custom request IDs
+     * @return array<string, mixed> responses mapped by custom request IDs
      */
     public function getResultData(bool $okOnly = false): array
     {
@@ -207,7 +214,7 @@ class MultiCurlRunner
     /**
      * Parses the response
      * @param string $response raw HTTP response
-     * @return array [code => statusCode, headers => [key => value, ...], body => responseBody]
+     * @return array<string, mixed> [code => statusCode, headers => [key => value, ...], body => responseBody]
      */
     protected function parseResponse(string $response): array
     {
@@ -220,23 +227,26 @@ class MultiCurlRunner
         while(count($arResponse)) {
             $respItem = array_shift($arResponse);
 
-            $line = strtok($respItem, "\r\n");
+            $line = (string)strtok($respItem, "\r\n");
             $statusCodeLine = trim($line);
-            if(preg_match('|HTTP/\d\.\d\s+(\d+)|', $statusCodeLine,$matches)) {
+            if(preg_match('|HTTP/[\d.]+\s+(\d+)|', $statusCodeLine, $matches)) {
                 $arHeaders = [];
-                $statusCode = (int)$matches[1] ?? null;
+
+                if(isset($matches[1])) {
+                    $statusCode = (int)$matches[1];
+                } else {
+                    $statusCode = null;
+                }
 
                 // Parse the string, saving it into an array instead
                 while(($line = strtok("\r\n")) !== false) {
                     if(($matches = explode(':', $line, 2)) !== false) {
-                        $arHeaders["{$matches[0]}"] = trim($matches[1]);
+                        $arHeaders[trim(mb_strtolower($matches[0]))] = trim(mb_strtolower($matches[1]));
                     }
                 }
             } else {
-                if(
-                    isset($arHeaders['Content-Type'])
-                    && strpos($arHeaders['Content-Type'], 'application/json') !== false
-                ) {
+                $contentType = $arHeaders['content-type'] ?? null;
+                if($contentType === 'application/json') {
                     $body = json_decode($respItem, true);
                 } else {
                     $body = $respItem;

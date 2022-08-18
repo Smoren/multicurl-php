@@ -2,14 +2,13 @@
 
 namespace Smoren\MultiCurl\Tests\Unit;
 
-
 use Smoren\MultiCurl\MultiCurl;
 
 class MultiCurlTest extends \Codeception\Test\Unit
 {
     public function testDefaultDelimiter()
     {
-        $mc = new MultiCurl(10, [
+        $mc = new MultiCurl(2, [
             CURLOPT_POST => true,
             CURLOPT_FOLLOWLOCATION => 1,
         ], [
@@ -18,88 +17,85 @@ class MultiCurlTest extends \Codeception\Test\Unit
 
         $mc->addRequest(1, 'https://httpbin.org/anything', ['some' => 'data']);
         $mc->addRequest(2, 'https://httpbin.org/anything', ['some' => 'another data']);
+        $result = $mc->makeRequests(false, false);
+        $this->assertEquals($this->getExpected(false), $this->formatResult($result, false));
 
-        $result = $mc->makeRequests();
+        $mc->addRequest(1, 'https://httpbin.org/anything', ['some' => 'data']);
+        $mc->addRequest(2, 'https://httpbin.org/anything', ['some' => 'another data']);
+        $mc->addRequest(3, 'https://httpbin.org/status/500', ['bad' => 'request']);
 
+        $result = $mc->makeRequests(false, true);
+        $this->assertEquals($this->getExpected(false), $this->formatResult($result, false));
+
+        $mc->addRequest(1, 'https://httpbin.org/anything', ['some' => 'data']);
+        $mc->addRequest(2, 'https://httpbin.org/anything', ['some' => 'another data']);
+
+        $result = $mc->makeRequests(true, false);
+        $this->assertEquals($this->getExpected(true), $this->formatResult($result, true));
+
+        $mc->addRequest(1, 'https://httpbin.org/anything', ['some' => 'data']);
+        $mc->addRequest(2, 'https://httpbin.org/anything', ['some' => 'another data']);
+        $mc->addRequest(3, 'https://httpbin.org/status/500', ['bad' => 'request']);
+
+        $result = $mc->makeRequests(true, true);
+        $this->assertEquals($this->getExpected(true), $this->formatResult($result, true));
+
+        for($i=1; $i<=5; ++$i) {
+            $mc->addRequest($i, 'https://httpbin.org/anything', ['id' => $i]);
+        }
+        $result = $mc->makeRequests(true, false);
+        $this->assertCount(5, $result);
+        for($i=1; $i<=5; ++$i) {
+            $this->assertEquals($i, $result[$i]['json']['id'] ?? null);
+        }
+    }
+
+    protected function formatResult(array $result, bool $dataOnly): array
+    {
         foreach($result as &$item) {
-            unset($item['headers']['Date']);
-            unset($item['body']['headers']['X-Amzn-Trace-Id']);
+            if($dataOnly) {
+                $item = $item['json'];
+            } else {
+                $item['headers'] = [
+                    'content-type' => $item['headers']['content-type'],
+                ];
+                $item['body'] = $item['body']['json'];
+            }
         }
         unset($item);
 
-        $expected = [
+        return $result;
+    }
+
+    protected function getExpected(bool $dataOnly): array
+    {
+        $result = [
             1 => [
                 "code" => 200,
                 "headers" => [
-                    //"Date" => "Sat, 14 May 2022 08:27:37 GMT",
-                    "Content-Type" => "application/json",
-                    "Content-Length" => "459",
-                    "Connection" => "keep-alive",
-                    "Server" => "gunicorn/19.9.0",
-                    "Access-Control-Allow-Origin" => "*",
-                    "Access-Control-Allow-Credentials" => "true"
+                    "content-type" => "application/json",
                 ],
                 "body" => [
-                    "args" => [
-                    ],
-                    "data" => '{"some":"data"}',
-                    "files" => [
-                    ],
-                    "form" => [
-                    ],
-                    "headers" => [
-                        "Accept" => "*/*",
-                        "Accept-Encoding" => "deflate, gzip",
-                        "Content-Length" => "15",
-                        "Content-Type" => "application/json",
-                        "Host" => "httpbin.org",
-                        //"X-Amzn-Trace-Id" => "Root=1-627f67f9-234d420863f83b915d3fa540"
-                    ],
-                    "json" => [
-                        "some" => "data"
-                    ],
-                    "method" => "POST",
-                    "origin" => "46.22.56.202",
-                    "url" => "https://httpbin.org/anything"
+                    "some" => "data"
                 ]
             ],
             2 => [
                 "code" => 200,
                 "headers" => [
-                    //"Date" => "Sat, 14 May 2022 08:27:37 GMT",
-                    "Content-Type" => "application/json",
-                    "Content-Length" => "475",
-                    "Connection" => "keep-alive",
-                    "Server" => "gunicorn/19.9.0",
-                    "Access-Control-Allow-Origin" => "*",
-                    "Access-Control-Allow-Credentials" => "true"
+                    "content-type" => "application/json",
                 ],
                 "body" => [
-                    "args" => [
-                    ],
-                    "data" => '{"some":"another data"}',
-                    "files" => [
-                    ],
-                    "form" => [
-                    ],
-                    "headers" => [
-                        "Accept" => "*/*",
-                        "Accept-Encoding" => "deflate, gzip",
-                        "Content-Length" => "23",
-                        "Content-Type" => "application/json",
-                        "Host" => "httpbin.org",
-                        //"X-Amzn-Trace-Id" => "Root=1-627f67f9-65ec4a9d2b204e2576e7564f"
-                    ],
-                    "json" => [
-                        "some" => "another data"
-                    ],
-                    "method" => "POST",
-                    "origin" => "46.22.56.202",
-                    "url" => "https://httpbin.org/anything"
+                    "some" => "another data"
                 ]
             ]
         ];
 
-        $this->assertEquals($expected, $result);
+        if($dataOnly) {
+            foreach($result as &$item) {
+                $item = $item['body'];
+            }
+        }
+
+        return $result;
     }
 }
