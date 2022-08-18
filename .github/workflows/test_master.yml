@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['7.2', '7.4', '8.0', '8.1']
+        php: ['7.4', '8.0', '8.1']
 
     steps:
       - name: Set up PHP
@@ -46,9 +46,6 @@ jobs:
       - name: PHP Code Sniffer
         run: composer codesniffer
 
-      - name: PHPStan analysis
-        run: composer stan
-
   code-coverage:
     name: Code coverage
     runs-on: ubuntu-latest
@@ -78,6 +75,10 @@ jobs:
           composer test-coverage-xml
           mkdir -p ./build/logs
           cp ./tests/_output/coverage.xml ./build/logs/clover.xml
+
+      - name: PHPStan analysis
+        run: composer stan
+
       - name: Code Coverage (Coveralls)
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
