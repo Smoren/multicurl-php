@@ -2,6 +2,8 @@
 
 namespace Smoren\MultiCurl;
 
+use CurlHandle;
+use CurlMultiHandle;
 use RuntimeException;
 
 /**
@@ -11,7 +13,7 @@ use RuntimeException;
 class MultiCurlRunner
 {
     /**
-     * @var resource MultiCurl resource
+     * @var resource|CurlMultiHandle MultiCurl resource
      */
     protected $mh;
     /**
@@ -48,10 +50,6 @@ class MultiCurlRunner
 
         $mh = curl_multi_init();
 
-        if(!$mh) {
-            throw new RuntimeException("failed creating curl multi handle");
-        }
-
         $this->mh = $mh;
         $this->workersMap = [];
         $this->unemployedWorkers = [];
@@ -84,15 +82,16 @@ class MultiCurlRunner
 
             $newWorker = array_pop($this->unemployedWorkers);
 
+            // @phpstan-ignore-next-line
             if(!curl_setopt_array($newWorker, $options)) {
-                $errNo = curl_errno($newWorker);
-                $errMess = curl_error($newWorker);
+                $errNo = curl_errno($newWorker); // @phpstan-ignore-line
+                $errMess = curl_error($newWorker); // @phpstan-ignore-line
                 $errData = var_export($options, true);
                 throw new RuntimeException("curl_setopt_array failed: {$errNo} {$errMess} {$errData}");
             }
 
             $this->workersMap[(int)$newWorker] = $id;
-            curl_multi_add_handle($this->mh, $newWorker);
+            curl_multi_add_handle($this->mh, $newWorker); // @phpstan-ignore-line
         }
         unset($options);
 
@@ -101,10 +100,10 @@ class MultiCurlRunner
         }
 
         foreach($this->unemployedWorkers as $unemployedWorker) {
-            curl_close($unemployedWorker);
+            curl_close($unemployedWorker); // @phpstan-ignore-line
         }
 
-        curl_multi_close($this->mh);
+        curl_multi_close($this->mh); // @phpstan-ignore-line
 
         return $this;
     }
@@ -158,13 +157,13 @@ class MultiCurlRunner
 
         while(true) {
             do {
-                $err = curl_multi_exec($this->mh, $stillRunning);
+                $err = curl_multi_exec($this->mh, $stillRunning); // @phpstan-ignore-line
             } while($err === CURLM_CALL_MULTI_PERFORM);
 
             if($err !== CURLM_OK) {
                 $errInfo = [
                     "multi_exec_return" => $err,
-                    "curl_multi_errno" => curl_multi_errno($this->mh),
+                    "curl_multi_errno" => curl_multi_errno($this->mh), // @phpstan-ignore-line
                     "curl_multi_strerror" => curl_multi_strerror($err)
                 ];
 
@@ -177,10 +176,11 @@ class MultiCurlRunner
                 break;
             } else {
                 // no workers finished yet, sleep-wait for workers to finish downloading.
-                curl_multi_select($this->mh, 1);
+                curl_multi_select($this->mh, 1); // @phpstan-ignore-line
                 // sleep(1);
             }
         }
+        // @phpstan-ignore-next-line
         while(($info = curl_multi_info_read($this->mh)) !== false) {
             if($info['msg'] !== CURLMSG_DONE) {
                 // no idea what this is, it's not the message we're looking for though, ignore it.
@@ -192,8 +192,8 @@ class MultiCurlRunner
                     "effective_url" => curl_getinfo($info['handle'], CURLINFO_EFFECTIVE_URL),
                     "curl_errno" => curl_errno($info['handle']),
                     "curl_error" => curl_error($info['handle']),
-                    "curl_multi_errno" => curl_multi_errno($this->mh),
-                    "curl_multi_strerror" => curl_multi_strerror(curl_multi_errno($this->mh))
+                    "curl_multi_errno" => curl_multi_errno($this->mh), // @phpstan-ignore-line
+                    "curl_multi_strerror" => curl_multi_strerror(curl_multi_errno($this->mh)) // @phpstan-ignore-line
                 ];
 
                 $errData = str_replace(["\r", "\n"], "", var_export($errInfo, true));
@@ -203,10 +203,11 @@ class MultiCurlRunner
             $ch = $info['handle'];
             $chIndex = (int)$ch;
 
+            // @phpstan-ignore-next-line
             $this->result[$this->workersMap[$chIndex]] = $this->parseResponse(curl_multi_getcontent($ch));
 
             unset($this->workersMap[$chIndex]);
-            curl_multi_remove_handle($this->mh, $ch);
+            curl_multi_remove_handle($this->mh, $ch); // @phpstan-ignore-line
             $this->unemployedWorkers[] = $ch;
         }
     }

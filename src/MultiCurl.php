@@ -101,6 +101,7 @@ class MultiCurl
         }
 
         if($body !== null) {
+            /** @var string|numeric $body */
             $options[CURLOPT_POSTFIELDS] = strval($body);
         }
 
